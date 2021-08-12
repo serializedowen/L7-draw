@@ -2,6 +2,7 @@ import { IInteractionTarget, ILngLat, Scene } from '@antv/l7';
 import { Feature, featureCollection, point } from '@turf/helpers';
 import { DrawEvent, DrawModes } from '../util/constant';
 import moveFeatures from '../util/move_features';
+import { isPoint } from '../util/typeguards';
 import DrawFeature, { IDrawFeatureOption } from './draw_feature';
 export default class DrawPoint extends DrawFeature {
   protected pointFeatures: Feature[];
@@ -82,12 +83,12 @@ export default class DrawPoint extends DrawFeature {
   protected initData(): boolean {
     const features: Feature[] = [];
     this.source.data.features.forEach(feature => {
-      if (feature.geometry.type === 'Point') {
+      if (isPoint(feature)) {
         const p = {
-          lng: feature.geometry.coordinates[0] as number,
-          lat: feature.geometry.coordinates[1] as number,
+          lng: feature.geometry.coordinates[0],
+          lat: feature.geometry.coordinates[1],
         };
-        features.push(this.createFeature(p, feature?.properties?.id, false));
+        features.push(this.createFeature(p, feature.properties?.id, false));
       }
     });
     this.source.data.features = features;

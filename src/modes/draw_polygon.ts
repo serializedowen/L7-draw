@@ -15,6 +15,7 @@ import DrawRulerLayer from '../render/draw_ruler';
 import { DrawEvent, DrawModes, unitsType } from '../util/constant';
 import { createPoint, createPolygon } from '../util/create_geometry';
 import moveFeatures from '../util/move_features';
+import { isLineString, isPolygon } from '../util/typeguards';
 import DrawFeature, { IDrawFeatureOption } from './draw_feature';
 import { IMeasureable } from './IMeasureable';
 export interface IDrawRectOption extends IDrawFeatureOption {
@@ -106,10 +107,10 @@ export default class DrawPolygon extends DrawFeature implements IMeasureable {
     const coord = vertex?.geometry?.coordinates as Position;
     const [lng, lat] = coord;
     const feature = this.currentFeature as Feature<Geometries, Properties>;
-    const type = feature?.geometry?.type;
+
     const points = [];
-    if (type === 'Polygon') {
-      const coords = feature?.geometry?.coordinates as Position[][];
+    if (isPolygon(feature)) {
+      const coords = feature.geometry.coordinates;
       coords[0].splice(id + 1, 0, coord);
       for (let i = 0; i < coords[0].length - 1; i++) {
         points.push({
@@ -117,9 +118,8 @@ export default class DrawPolygon extends DrawFeature implements IMeasureable {
           lat: coords[0][i][1],
         });
       }
-    } else {
-      // Line
-      const coords = feature?.geometry?.coordinates as Position[];
+    } else if (isLineString(feature)) {
+      const coords = feature.geometry.coordinates;
       coords.splice(id + 1, 0, coord);
       for (const coor of coords) {
         points.push({
@@ -306,15 +306,16 @@ export default class DrawPolygon extends DrawFeature implements IMeasureable {
       Geometries,
       Properties
     >;
+
     if (!selectVertexed) {
       return;
     } else {
-      // @ts-ignore
-      const id = selectVertexed.properties.id * 1;
-      // @ts-ignore
+      const id = selectVertexed.properties?.id * 1;
+
       selectVertexed.geometry.coordinates = [vertex.lng, vertex.lat];
       // @ts-ignore
       this.pointFeatures[id].geometry.coordinates = [vertex.lng, vertex.lat];
+
       this.drawVertexLayer.updateData(featureCollection(this.pointFeatures));
       this.drawMidVertexLayer.updateData(featureCollection(this.pointFeatures));
       this.editPolygonVertex(id, vertex);
@@ -370,17 +371,15 @@ export default class DrawPolygon extends DrawFeature implements IMeasureable {
   protected initData(): boolean {
     const features: Feature[] = [];
     this.source.data.features.forEach(feature => {
-      if (feature.geometry.type === 'Polygon') {
-        const points = (feature.geometry.coordinates[0] as Position[]).map(
-          coord => {
-            return {
-              lng: coord[0],
-              lat: coord[1],
-            };
-          },
-        );
+      if (isPolygon(feature)) {
+        const points = feature.geometry.coordinates[0].map(coord => {
+          return {
+            lng: coord[0],
+            lat: coord[1],
+          };
+        });
         features.push(
-          this.createFeature(points.slice(1), feature?.properties?.id, false),
+          this.createFeature(points.slice(1), feature.properties?.id, false),
         );
       }
     });
@@ -390,15 +389,15 @@ export default class DrawPolygon extends DrawFeature implements IMeasureable {
 
   private editPolygonVertex(id: number, vertex: ILngLat) {
     const feature = this.currentFeature as Feature<Geometries, Properties>;
-    const type = feature?.geometry?.type;
-    if (type === 'Polygon') {
-      const coords = feature?.geometry?.coordinates as Position[][];
+
+    if (isPolygon(feature)) {
+      const coords = feature.geometry.coordinates;
       coords[0][id] = [vertex.lng, vertex.lat];
       if (-id === 0) {
         coords[0][coords[0].length - 1] = [vertex.lng, vertex.lat];
       }
     } else {
-      const coords = feature?.geometry?.coordinates as Position[];
+      const coords = feature.geometry.coordinates;
       coords[id] = [vertex.lng, vertex.lat];
     }
     this.setCurrentFeature(feature);
